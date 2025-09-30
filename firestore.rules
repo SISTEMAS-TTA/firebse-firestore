@@ -1,0 +1,70 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Función para verificar si el usuario es admin
+    function isAdmin() {
+      return request.auth != null && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    // Función para verificar si el usuario está autenticado
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Función para verificar si es el propio usuario
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    // Reglas para la colección de usuarios
+    match /users/{userId} {
+      // Los usuarios pueden leer su propio perfil, los admins pueden leer todos
+      allow read: if isOwner(userId) || isAdmin();
+      
+      // Solo los admins pueden crear nuevos usuarios
+      allow create: if isAdmin();
+      
+      // Los usuarios pueden actualizar su propio perfil (excepto el rol)
+      // Los admins pueden actualizar cualquier usuario
+      allow update: if (isOwner(userId) && !('role' in request.resource.data.diff(resource.data).affectedKeys())) 
+                    || isAdmin();
+      
+      // Solo los admins pueden eliminar usuarios
+      allow delete: if isAdmin();
+    }
+
+    // Reglas para la colección de tareas
+    match /tasks/{taskId} {
+      // Los usuarios pueden leer sus propias tareas, los admins pueden leer todas
+      allow read: if isAuthenticated() && 
+                     (resource.data.assigneeId == request.auth.uid || isAdmin());
+      
+      // Los usuarios pueden crear tareas asignadas a sí mismos, los admins pueden crear cualquier tarea
+      allow create: if isAuthenticated() && 
+                       (request.resource.data.assigneeId == request.auth.uid || isAdmin());
+      
+      // Los usuarios pueden actualizar sus propias tareas, los admins pueden actualizar cualquier tarea
+      allow update: if isAuthenticated() && 
+                       (resource.data.assigneeId == request.auth.uid || isAdmin());
+      
+      // Solo los admins pueden eliminar tareas (soft delete)
+      allow delete: if isAdmin();
+    }
+
+    // Reglas para logs del sistema (solo admins)
+    match /logs/{logId} {
+      allow read, write: if isAdmin();
+    }
+
+    // Reglas para configuraciones del sistema (solo admins)
+    match /settings/{settingId} {
+      allow read, write: if isAdmin();
+    }
+
+    // Reglas por defecto: denegar todo lo demás
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
