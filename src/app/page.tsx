@@ -3,6 +3,7 @@
 import NavSidebar from "@/app/components/NavSidebar";
 import TaskList from "@/app/components/TaskList";
 import AuthWrapper from "@/app/components/AuthWrapper";
+import UserWelcome from "@/app/components/UserWelcome";
 
 export default function HomePage() {
   return (
@@ -10,6 +11,8 @@ export default function HomePage() {
       <div className="flex">
         <NavSidebar />
         <main className="flex-1 p-6">
+          <UserWelcome />
+
           <div className="mb-6">
             <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
             <p className="text-gray-600">
